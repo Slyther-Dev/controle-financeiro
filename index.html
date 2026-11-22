@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinControl - Controle Financeiro Pessoal</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Transições suaves e scrollbar estilizado */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .modal-backdrop {
+            background-color: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+<body class="font-sans text-slate-800 antialiased min-h-full flex flex-col">
+
+    <!-- Header Principal -->
+    <header class="bg-slate-900 text-white sticky top-0 z-30 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-emerald-500 text-slate-900 p-2 rounded-xl font-bold flex items-center justify-center w-10 h-10 shadow-lg shadow-emerald-500/20">
+                    <i class="fa-solid fa-wallet text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight text-white leading-none">FinControl</h1>
+                    <span class="text-xs text-slate-400">Gestão Financeira Inteligente</span>
+                </div>
+            </div>
+
+            <!-- Botões de Ação do Topo -->
+            <div class="flex items-center space-x-2 sm:space-x-3">
+                <button id="btn-load-demo" class="px-3 py-1.5 text-xs sm:text-sm font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg transition-all flex items-center gap-1.5" title="Carregar Lançamentos de Demonstração">
+                    <i class="fa-solid fa-magic text-emerald-400"></i>
+                    <span class="hidden sm:inline">Dados de Exemplo</span>
+                </button>
+                <button id="btn-clear-all" class="px-3 py-1.5 text-xs sm:text-sm font-medium bg-slate-800 hover:bg-red-950/40 text-red-400 hover:text-red-300 border border-slate-700 hover:border-red-900/50 rounded-lg transition-all flex items-center gap-1.5" title="Resetar todos os dados salvos">
+                    <i class="fa-solid fa-trash-can"></i>
+                    <span class="hidden sm:inline">Limpar Tudo</span>
+                </button>
+                <button id="btn-tech-docs" class="px-3 py-1.5 text-xs sm:text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-sm transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-code"></i>
+                    <span>Guia da Arquitetura</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Conteúdo Principal -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- Banner Informativo Curto -->
+        <div id="demo-banner" class="hidden bg-emerald-50 border border-emerald-200 text-emerald-900 px-4 py-3 rounded-xl flex items-center justify-between shadow-sm">
+            <div class="flex items-center gap-3">
+                <i class="fa-solid fa-circle-check text-emerald-600 text-lg"></i>
+                <p class="text-sm">Dados de exemplo carregados com sucesso! Você pode adicionar novos lançamentos ou filtrar a lista abaixo.</p>
+            </div>
+            <button onclick="document.getElementById('demo-banner').classList.add('hidden')" class="text-emerald-700 hover:text-emerald-950 text-sm font-semibold">✕</button>
+        </div>
+
+        <!-- Dashboard Cards (Resumo Financeiro em Tempo Real) -->
+        <section class="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <!-- Card 1: Saldo Atual -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Saldo Atual</p>
+                        <h2 id="card-total-balance" class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">R$ 0,00</h2>
+                    </div>
+                    <div id="icon-balance-bg" class="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 text-xl">
+                        <i class="fa-solid fa-scale-balanced"></i>
+                    </div>
+                </div>
+                <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                    <span class="text-slate-500">Balanço líquido acumulado</span>
+                    <span id="badge-health" class="px-2 py-0.5 rounded-full font-medium bg-slate-100 text-slate-600">Estável</span>
+                </div>
+            </div>
+
+            <!-- Card 2: Total de Receitas -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Receitas</p>
+                        <h2 id="card-total-income" class="text-2xl sm:text-3xl font-extrabold text-emerald-600 mt-1">R$ 0,00</h2>
+                    </div>
+                    <div class="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 text-xl">
+                        <i class="fa-solid fa-arrow-trend-up"></i>
+                    </div>
+                </div>
+                <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                    <span class="text-slate-500">Entradas cadastradas</span>
+                    <span id="income-count" class="font-semibold text-slate-700">0 lançamentos</span>
+                </div>
+            </div>
+
+            <!-- Card 3: Total de Despesas -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Despesas</p>
+                        <h2 id="card-total-expense" class="text-2xl sm:text-3xl font-extrabold text-rose-600 mt-1">R$ 0,00</h2>
+                    </div>
+                    <div class="w-12 h-12 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600 text-xl">
+                        <i class="fa-solid fa-arrow-trend-down"></i>
+                    </div>
+                </div>
+                <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                    <span class="text-slate-500">Saídas cadastradas</span>
+                    <span id="expense-count" class="font-semibold text-slate-700">0 lançamentos</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Seção Principal: Formulário + Gráficos -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- Formulário de Nova Transação (Col-12 no mobile, Col-5 em Telas Grandes) -->
+            <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-sm">
+                <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                    <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-circle-plus text-emerald-500"></i>
+                        Novo Lançamento
+                    </h3>
+                    <span class="text-xs text-slate-400">Preencha os dados abaixo</span>
+                </div>
+
+                <form id="transaction-form" class="space-y-4">
+                    <!-- Seletor de Tipo (Receita x Despesa) -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1.5">Tipo de Movimentação</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <label class="cursor-pointer">
+                                <input type="radio" name="transaction-type" value="receita" class="peer sr-only">
+                                <div class="flex items-center justify-center gap-2 py-2.5 px-3 border border-slate-300 rounded-xl text-slate-600 font-medium peer-checked:bg-emerald-50 peer-checked:border-emerald-500 peer-checked:text-emerald-700 transition-all text-sm">
+                                    <i class="fa-solid fa-arrow-up text-emerald-500"></i>
+                                    <span>Receita</span>
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="transaction-type" value="despesa" class="peer sr-only" checked>
+                                <div class="flex items-center justify-center gap-2 py-2.5 px-3 border border-slate-300 rounded-xl text-slate-600 font-medium peer-checked:bg-rose-50 peer-checked:border-rose-500 peer-checked:text-rose-700 transition-all text-sm">
+                                    <i class="fa-solid fa-arrow-down text-rose-500"></i>
+                                    <span>Despesa</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Descrição -->
+                    <div>
+                        <label for="desc" class="block text-xs font-semibold text-slate-600 uppercase mb-1.5">Descrição</label>
+                        <input type="text" id="desc" required placeholder="Ex: Supermercado, Salário, Freela..." class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all">
+                    </div>
+
+                    <!-- Valor & Data (Grid 2 colunas) -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label for="amount" class="block text-xs font-semibold text-slate-600 uppercase mb-1.5">Valor (R$)</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 font-medium text-sm">R$</span>
+                                <input type="number" id="amount" step="0.01" min="0.01" required placeholder="0,00" class="w-full pl-10 pr-3 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="date" class="block text-xs font-semibold text-slate-600 uppercase mb-1.5">Data</label>
+                            <input type="date" id="date" required class="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-slate-700">
+                        </div>
+                    </div>
+
+                    <!-- Categoria -->
+                    <div>
+                        <label for="category" class="block text-xs font-semibold text-slate-600 uppercase mb-1.5">Categoria</label>
+                        <select id="category" required class="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all bg-white text-slate-700">
+                            <!-- Categorias serão preenchidas dinamicamente pelo JS -->
+                        </select>
+                    </div>
+
+                    <!-- Botão Salvar -->
+                    <button type="submit" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 mt-2">
+                        <i class="fa-solid fa-check"></i>
+                        <span>Confirmar Lançamento</span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Dashboard de Gráficos (Col-7 em Telas Grandes) -->
+            <div class="lg:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                <!-- Gráfico de Rosca: Despesas por Categoria -->
+                <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-pie text-rose-500"></i>
+                            Despesas por Categoria
+                        </h4>
+                    </div>
+                    <div class="relative flex-1 flex items-center justify-center min-h-[220px]">
+                        <canvas id="chart-categories"></canvas>
+                        <div id="chart-categories-empty" class="hidden absolute inset-0 flex flex-col items-center justify-center text-slate-400 text-center p-4">
+                            <i class="fa-solid fa-chart-pie text-4xl text-slate-200 mb-2"></i>
+                            <p class="text-xs">Nenhuma despesa registrada para exibir no gráfico.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gráfico de Barras: Receita vs Despesa -->
+                <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-column text-indigo-500"></i>
+                            Receitas vs Despesas
+                        </h4>
+                    </div>
+                    <div class="relative flex-1 flex items-center justify-center min-h-[220px]">
+                        <canvas id="chart-balance"></canvas>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Tabela e Filtros de Histórico de Transações -->
+        <section class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+            
+            <!-- Barra Superior da Tabela: Filtros e Pesquisa -->
+            <div class="p-4 sm:p-5 border-b border-slate-100 bg-slate-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                
+                <div>
+                    <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-list-check text-slate-600"></i>
+                        Histórico de Transações
+                    </h3>
+                    <p class="text-xs text-slate-500">Visualize e gerencie todos os seus lançamentos</p>
+                </div>
+
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    <!-- Filtro por Tipo -->
+                    <div class="flex rounded-xl bg-slate-200/70 p-1 text-xs font-medium">
+                        <button id="filter-all" onclick="filterTransactions('todos')" class="filter-btn px-3 py-1.5 rounded-lg bg-white text-slate-800 shadow-sm transition-all font-semibold">Todos</button>
+                        <button id="filter-receita" onclick="filterTransactions('receita')" class="filter-btn px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all">Receitas</button>
+                        <button id="filter-despesa" onclick="filterTransactions('despesa')" class="filter-btn px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all">Despesas</button>
+                    </div>
+
+                    <!-- Busca por Texto -->
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input type="text" id="search-input" placeholder="Buscar lançamentos..." class="pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 w-full sm:w-48 bg-white transition-all">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabela de Dados -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs sm:text-sm">
+                    <thead class="bg-slate-100/70 text-slate-600 uppercase font-semibold text-[11px] tracking-wider border-b border-slate-200/60">
+                        <tr>
+                            <th class="py-3 px-4">Descrição</th>
+                            <th class="py-3 px-4">Categoria</th>
+                            <th class="py-3 px-4">Data</th>
+                            <th class="py-3 px-4 text-right">Valor</th>
+                            <th class="py-3 px-4 text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transaction-list-body" class="divide-y divide-slate-100">
+                        <!-- Conteúdo será injetado pelo JS -->
+                    </tbody>
+                </table>
+
+                <!-- Estado Vazio -->
+                <div id="empty-state" class="hidden py-12 text-center text-slate-400">
+                    <i class="fa-solid fa-folder-open text-4xl mb-3 text-slate-300"></i>
+                    <p class="text-sm font-medium text-slate-600">Nenhum lançamento encontrado</p>
+                    <p class="text-xs text-slate-400 mt-1">Adicione uma nova transação ou altere seus filtros de busca.</p>
+                </div>
+            </div>
+
+            <!-- Rodapé da Tabela -->
+            <div class="p-3 px-5 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <span id="filtered-count-info">Exibindo 0 lançamentos</span>
+                <span id="export-info" class="hidden sm:inline">Armazenamento local persistido com sucesso</span>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Rodapé Completo da Aplicação -->
+    <footer class="bg-white border-t border-slate-200 mt-12 py-6 text-center text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="flex items-center gap-2 font-medium text-slate-700">
+                <i class="fa-solid fa-shield-halved text-emerald-600"></i>
+                <span>FinControl &bull; Arquitetura Vanilla JS com State Management</span>
+            </div>
+            <div>
+                <span>Desenvolvido para alta performance e demonstração técnica.</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- MODAL: Documentação & Arquitetura Técnica (Para Entrevista Tech) -->
+    <div id="tech-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop hidden transition-opacity duration-300">
+        <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden transform transition-all">
+            
+            <!-- Header Modal -->
+            <div class="bg-slate-900 text-white px-6 py-4 flex items-center justify-between border-b border-slate-800">
+                <div class="flex items-center gap-3">
+                    <div class="bg-emerald-500/20 text-emerald-400 p-2 rounded-lg">
+                        <i class="fa-solid fa-code text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-white">Guia de Arquitetura & Apresentação Técnica</h3>
+                        <p class="text-xs text-slate-400">Visão detalhada sobre os padrões de projeto utilizados nesta aplicação</p>
+                    </div>
+                </div>
+                <button id="btn-close-modal" class="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800 text-lg transition-all">✕</button>
+            </div>
+
+            <!-- Corpo Modal (Scrollable) -->
+            <div class="p-6 overflow-y-auto space-y-6 text-sm text-slate-600">
+                
+                <!-- 1. Visão Geral e Paradigma -->
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80">
+                    <h4 class="text-base font-bold text-slate-900 flex items-center gap-2 mb-2">
+                        <i class="fa-solid fa-layer-group text-emerald-600"></i>
+                        1. Paradigma & Arquitetura (State-Driven UI)
+                    </h4>
+                    <p class="leading-relaxed">
+                        Este projeto adota o padrão de <strong>Interface Guiada por Estado (State-Driven UI)</strong> utilizando JavaScript Vanilla puro, sem dependências de frameworks pesados como React ou Vue. Todo o estado financeiro reside em um objeto centralizado (<code class="bg-slate-200 text-slate-800 px-1.5 py-0.5 rounded font-mono text-xs">AppState</code>). Qualquer modificação no estado dispara re-renderizações previsíveis e reativas na DOM e nos gráficos.
+                    </p>
+                </div>
+
+                <!-- 2. Módulos & Separação de Responsabilidades (SOC) -->
+                <div>
+                    <h4 class="text-base font-bold text-slate-900 flex items-center gap-2 mb-3">
+                        <i class="fa-solid fa-cubes text-indigo-600"></i>
+                        2. Módulos & Separação de Responsabilidades (SOC)
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="p-3.5 border border-slate-200 rounded-xl bg-white shadow-xs">
+                            <h5 class="font-bold text-slate-800 text-xs uppercase text-emerald-600 mb-1">StorageManager</h5>
+                            <p class="text-xs text-slate-600">Isola o acesso à API do <code class="font-mono">localStorage</code> do navegador, garantindo serialização e tratamento de exceções (try/catch).</p>
+                        </div>
+                        <div class="p-3.5 border border-slate-200 rounded-xl bg-white shadow-xs">
+                            <h5 class="font-bold text-slate-800 text-xs uppercase text-indigo-600 mb-1">FinanceService</h5>
+                            <p class="text-xs text-slate-600">Regras de negócio puras: cálculo de saldos, agregação de receitas/despesas e agrupamento categórico para os gráficos.</p>
+                        </div>
+                        <div class="p-3.5 border border-slate-200 rounded-xl bg-white shadow-xs">
+                            <h5 class="font-bold text-slate-800 text-xs uppercase text-amber-600 mb-1">ChartManager</h5>
+                            <p class="text-xs text-slate-600">Gerencia a renderização e o ciclo de vida dos gráficos (Chart.js), prevenindo <em>memory leaks</em> via destruição segura das instâncias antigas.</p>
+                        </div>
+                        <div class="p-3.5 border border-slate-200 rounded-xl bg-white shadow-xs">
+                            <h5 class="font-bold text-slate-800 text-xs uppercase text-rose-600 mb-1">UIManager</h5>
+                            <p class="text-xs text-slate-600">Manipulação eficiente do DOM, escuta de eventos, badges de categoria, formatação de moeda BRL e animações visuais.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Formatação & Boas Práticas JS -->
+                <div>
+                    <h4 class="text-base font-bold text-slate-900 flex items-center gap-2 mb-2">
+                        <i class="fa-solid fa-wand-magic-sparkles text-amber-500"></i>
+                        3. Formatação Padrão Internacional (BRL)
+                    </h4>
+                    <p class="leading-relaxed">
+                        Em vez de regex ou manipulações manuais de strings para formatar moeda, utiliza-se a API nativa do navegador 
+                        <code class="bg-slate-100 text-indigo-700 px-2 py-0.5 rounded font-mono text-xs">Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })</code>. 
+                        Isso garante precisão no padrão monetário brasileiro (R$ 1.250,00).
+                    </p>
+                </div>
+
+                <!-- 4. Q&A para Entrevista Tech -->
+                <div class="bg-emerald-50/60 p-4 rounded-xl border border-emerald-200/80">
+                    <h4 class="text-base font-bold text-emerald-950 flex items-center gap-2 mb-3">
+                        <i class="fa-solid fa-comments text-emerald-600"></i>
+                        4. Possíveis Perguntas de Entrevista Tech & Respostas
+                    </h4>
+                    <div class="space-y-3 text-xs">
+                        <div>
+                            <p class="font-bold text-slate-800">Q: Por que preferiu modularizar o código em objetos de serviço em vez de colocar tudo num script linear?</p>
+                            <p class="text-slate-600 mt-0.5"><strong>R:</strong> Para aplicar o princípio DRY (Don't Repeat Yourself) e a responsabilidade única (SRP do SOLID). Isso torna o código desacoplado, facilmente testável e escalável.</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-800">Q: Como evitou problemas de travamento ou memory leaks com Chart.js?</p>
+                            <p class="text-slate-600 mt-0.5"><strong>R:</strong> Antes de instanciar um novo gráfico sobre o mesmo <code class="font-mono">&lt;canvas&gt;</code>, o <code class="font-mono">ChartManager</code> invoca o método <code class="font-mono">chartInstance.destroy()</code> para liberar a memória e a referência anterior do canvas.</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-800">Q: Como foi tratada a persistência de dados?</p>
+                            <p class="text-slate-600 mt-0.5"><strong>R:</strong> Através da API do <code class="font-mono">localStorage</code> com conversão JSON. Ao inicializar a aplicação, o estado é reconstituído a partir do storage. Também foi implementado um mecanismo para popular dados de demonstração rápida (seed data).</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Rodapé Modal -->
+            <div class="bg-slate-100 px-6 py-3 border-t border-slate-200 flex justify-end">
+                <button id="btn-close-modal-footer" class="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold rounded-xl transition-all">
+                    Entendi, Fechar Guia
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION (Mensagens dinâmicas) -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- SCRIPT DA APLICAÇÃO (JavaScript Vanilla de Alta Qualidade) -->
+    <script>
+        /**
+         * FINCONTROL - SISTEMA DE CONTROLE FINANCEIRO PESSOAL
+         * Padrão Arquitetural: State-Driven UI + Service Layer
+         */
+
+        // ==========================================
+        // 1. CONSTANTES E CONFIGURAÇÕES DE CATEGORIAS
+        // ==========================================
+        const CATEGORIES = {
+            // Categorias de Receita
+            'Salário': { type: 'receita', icon: 'fa-briefcase', color: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
+            'Freelance': { type: 'receita', icon: 'fa-laptop-code', color: 'bg-teal-100 text-teal-800 border-teal-200' },
+            'Investimentos': { type: 'receita', icon: 'fa-chart-line', color: 'bg-cyan-100 text-cyan-800 border-cyan-200' },
+            
+            // Categorias de Despesa
+            'Alimentação': { type: 'despesa', icon: 'fa-utensils', color: 'bg-amber-100 text-amber-800 border-amber-200' },
+            'Moradia': { type: 'despesa', icon: 'fa-house', color: 'bg-blue-100 text-blue-800 border-blue-200' },
+            'Transporte': { type: 'despesa', icon: 'fa-car', color: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
+            'Lazer': { type: 'despesa', icon: 'fa-gamepad', color: 'bg-purple-100 text-purple-800 border-purple-200' },
+            'Saúde': { type: 'despesa', icon: 'fa-heart-pulse', color: 'bg-rose-100 text-rose-800 border-rose-200' },
+            'Educação': { type: 'despesa', icon: 'fa-graduation-cap', color: 'bg-sky-100 text-sky-800 border-sky-200' },
+            'Outros': { type: 'ambos', icon: 'fa-tags', color: 'bg-slate-100 text-slate-800 border-slate-200' }
+        };
+
+        const DEMO_TRANSACTIONS = [
+            { id: '1', description: 'Salário Mensal', amount: 4500.00, type: 'receita', category: 'Salário', date: '2026-03-01' },
+            { id: '2', description: 'Projeto Freelance Web', amount: 1200.00, type: 'receita', category: 'Freelance', date: '2026-03-05' },
+            { id: '3', description: 'Aluguel do Apê', amount: 1600.00, type: 'despesa', category: 'Moradia', date: '2026-03-02' },
+            { id: '4', description: 'Supermercado Mensal', amount: 850.40, type: 'despesa', category: 'Alimentação', date: '2026-03-06' },
+            { id: '5', description: 'Combustível', amount: 220.00, type: 'despesa', category: 'Transporte', date: '2026-03-08' },
+            { id: '6', description: 'Cinema e Jantar', amount: 145.50, type: 'despesa', category: 'Lazer', date: '2026-03-10' },
+            { id: '7', description: 'Rendimento de Ações', amount: 180.30, type: 'receita', category: 'Investimentos', date: '2026-03-12' },
+            { id: '8', description: 'Farmácia', amount: 95.80, type: 'despesa', category: 'Saúde', date: '2026-03-14' }
+        ];
+
+        // ==========================================
+        // 2. ESTADO DA APLICAÇÃO (STATE MANAGEMENT)
+        // ==========================================
+        const AppState = {
+            transactions: [],
+            filterType: 'todos', // 'todos' | 'receita' | 'despesa'
+            searchQuery: ''
+        };
+
+        // ==========================================
+        // 3. PERSISTÊNCIA (STORAGE MANAGER)
+        // ==========================================
+        const StorageManager = {
+            STORAGE_KEY: 'fincontrol_transactions_v1',
+
+            load() {
+                try {
+                    const data = localStorage.getItem(this.STORAGE_KEY);
+                    return data ? JSON.parse(data) : [];
+                } catch (e) {
+                    console.error('Erro ao carregar localStorage:', e);
+                    return [];
+                }
+            },
+
+            save(transactions) {
+                try {
+                    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(transactions));
+                } catch (e) {
+                    console.error('Erro ao salvar no localStorage:', e);
+                }
+            },
+
+            clear() {
+                localStorage.removeItem(this.STORAGE_KEY);
+            }
+        };
+
+        // ==========================================
+        // 4. SERVIÇOS FINANCEIROS (REGRAS DE NEGÓCIO)
+        // ==========================================
+        const FinanceService = {
+            calculateSummary(transactions) {
+                return transactions.reduce((acc, curr) => {
+                    const val = parseFloat(curr.amount) || 0;
+                    if (curr.type === 'receita') {
+                        acc.totalIncome += val;
+                        acc.incomeCount++;
+                    } else if (curr.type === 'despesa') {
+                        acc.totalExpense += val;
+                        acc.expenseCount++;
+                    }
+                    return acc;
+                }, { totalIncome: 0, totalExpense: 0, incomeCount: 0, expenseCount: 0 });
+            },
+
+            getExpensesByCategory(transactions) {
+                const categoryTotals = {};
+                transactions
+                    .filter(t => t.type === 'despesa')
+                    .forEach(t => {
+                        const val = parseFloat(t.amount) || 0;
+                        categoryTotals[t.category] = (categoryTotals[t.category] || 0) + val;
+                    });
+                return categoryTotals;
+            },
+
+            filterTransactions(transactions, filterType, searchQuery) {
+                return transactions.filter(t => {
+                    const matchesType = filterType === 'todos' || t.type === filterType;
+                    const query = searchQuery.toLowerCase().trim();
+                    const matchesSearch = !query || 
+                        t.description.toLowerCase().includes(query) || 
+                        t.category.toLowerCase().includes(query);
+                    return matchesType && matchesSearch;
+                }).sort((a, b) => new Date(b.date) - new Date(a.date)); // Mais recentes primeiro
+            }
+        };
+
+        // ==========================================
+        // 5. GERENCIADOR DE GRÁFICOS (CHART MANAGER)
+        // ==========================================
+        const ChartManager = {
+            doughnutChartInstance: null,
+            barChartInstance: null,
+
+            updateCharts(transactions) {
+                this.renderDoughnutChart(transactions);
+                this.renderBarChart(transactions);
+            },
+
+            renderDoughnutChart(transactions) {
+                const ctx = document.getElementById('chart-categories').getContext('2d');
+                const emptyMessage = document.getElementById('chart-categories-empty');
+                const categoryData = FinanceService.getExpensesByCategory(transactions);
+                
+                const labels = Object.keys(categoryData);
+                const data = Object.values(categoryData);
+
+                if (this.doughnutChartInstance) {
+                    this.doughnutChartInstance.destroy();
+                }
+
+                if (labels.length === 0) {
+                    emptyMessage.classList.remove('hidden');
+                    return;
+                } else {
+                    emptyMessage.classList.add('hidden');
+                }
+
+                const chartColors = [
+                    '#f59e0b', '#3b82f6', '#6366f1', '#a855f7', 
+                    '#f43f5e', '#0ea5e9', '#64748b', '#10b981'
+                ];
+
+                this.doughnutChartInstance = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data,
+                            backgroundColor: chartColors.slice(0, labels.length),
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    boxWidth: 12,
+                                    font: { family: 'Inter', size: 11 }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const value = context.raw || 0;
+                                        return ` ${context.label}: ${UIManager.formatCurrency(value)}`;
+                                    }
+                                }
+                            }
+                        },
+                        cutout: '68%'
+                    }
+                });
+            },
+
+            renderBarChart(transactions) {
+                const ctx = document.getElementById('chart-balance').getContext('2d');
+                const summary = FinanceService.calculateSummary(transactions);
+
+                if (this.barChartInstance) {
+                    this.barChartInstance.destroy();
+                }
+
+                this.barChartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Receitas', 'Despesas'],
+                        datasets: [{
+                            data: [summary.totalIncome, summary.totalExpense],
+                            backgroundColor: ['#10b981', '#f43f5e'],
+                            borderRadius: 8,
+                            barThickness: 36
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return ` ${context.label}: ${UIManager.formatCurrency(context.raw)}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    font: { family: 'Inter', size: 10 },
+                                    callback: function(value) {
+                                        return 'R$ ' + value;
+                                    }
+                                },
+                                grid: { color: '#f1f5f9' }
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: { font: { family: 'Inter', size: 12, weight: 'bold' } }
+                            }
+                        }
+                    }
+                });
+            }
+        };
+
+        // ==========================================
+        // 6. GERENCIADOR DE INTERFACE (UI MANAGER)
+        // ==========================================
+        const UIManager = {
+            formatCurrency(value) {
+                return new Intl.NumberFormat('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL'
+                }).format(value);
+            },
+
+            formatDate(dateString) {
+                if (!dateString) return '';
+                const [year, month, day] = dateString.split('-');
+                return `${day}/${month}/${year}`;
+            },
+
+            populateCategorySelect(selectedType = 'despesa') {
+                const select = document.getElementById('category');
+                select.innerHTML = '';
+
+                Object.keys(CATEGORIES).forEach(cat => {
+                    const catInfo = CATEGORIES[cat];
+                    // Mostra categorias compatíveis com o tipo ou "ambos"
+                    if (catInfo.type === 'ambos' || catInfo.type === selectedType) {
+                        const option = document.createElement('option');
+                        option.value = cat;
+                        option.textContent = cat;
+                        select.appendChild(option);
+                    }
+                });
+            },
+
+            renderDashboardCards(transactions) {
+                const summary = FinanceService.calculateSummary(transactions);
+                const balance = summary.totalIncome - summary.totalExpense;
+
+                const balanceEl = document.getElementById('card-total-balance');
+                const incomeEl = document.getElementById('card-total-income');
+                const expenseEl = document.getElementById('card-total-expense');
+                const incomeCountEl = document.getElementById('income-count');
+                const expenseCountEl = document.getElementById('expense-count');
+                const healthBadge = document.getElementById('badge-health');
+
+                balanceEl.textContent = this.formatCurrency(balance);
+                incomeEl.textContent = this.formatCurrency(summary.totalIncome);
+                expenseEl.textContent = this.formatCurrency(summary.totalExpense);
+
+                incomeCountEl.textContent = `${summary.incomeCount} lançamento(s)`;
+                expenseCountEl.textContent = `${summary.expenseCount} lançamento(s)`;
+
+                // Ajusta cor do saldo e badge de saúde
+                if (balance > 0) {
+                    balanceEl.className = 'text-2xl sm:text-3xl font-extrabold text-emerald-600 mt-1';
+                    healthBadge.className = 'px-2 py-0.5 rounded-full font-medium bg-emerald-100 text-emerald-800';
+                    healthBadge.textContent = 'Superávit';
+                } else if (balance < 0) {
+                    balanceEl.className = 'text-2xl sm:text-3xl font-extrabold text-rose-600 mt-1';
+                    healthBadge.className = 'px-2 py-0.5 rounded-full font-medium bg-rose-100 text-rose-800';
+                    healthBadge.textContent = 'Déficit';
+                } else {
+                    balanceEl.className = 'text-2xl sm:text-3xl font-extrabold text-slate-800 mt-1';
+                    healthBadge.className = 'px-2 py-0.5 rounded-full font-medium bg-slate-100 text-slate-600';
+                    healthBadge.textContent = 'Neutro';
+                }
+            },
+
+            renderTransactionList(transactions) {
+                const tbody = document.getElementById('transaction-list-body');
+                const emptyState = document.getElementById('empty-state');
+                const filteredCountInfo = document.getElementById('filtered-count-info');
+
+                const filtered = FinanceService.filterTransactions(
+                    transactions, 
+                    AppState.filterType, 
+                    AppState.searchQuery
+                );
+
+                tbody.innerHTML = '';
+                filteredCountInfo.textContent = `Exibindo ${filtered.length} de ${transactions.length} lançamento(s)`;
+
+                if (filtered.length === 0) {
+                    emptyState.classList.remove('hidden');
+                    return;
+                } else {
+                    emptyState.classList.add('hidden');
+                }
+
+                filtered.forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-slate-50/80 transition-colors group';
+
+                    const categoryConfig = CATEGORIES[item.category] || { icon: 'fa-tag', color: 'bg-slate-100 text-slate-800' };
+                    const isIncome = item.type === 'receita';
+
+                    tr.innerHTML = `
+                        <td class="py-3 px-4 font-medium text-slate-900">
+                            <div class="flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-lg ${isIncome ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'} flex items-center justify-center text-xs">
+                                    <i class="fa-solid ${isIncome ? 'fa-arrow-up' : 'fa-arrow-down'}"></i>
+                                </div>
+                                <span class="truncate max-w-[180px] sm:max-w-none">${this.escapeHtml(item.description)}</span>
+                            </div>
+                        </td>
+                        <td class="py-3 px-4">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border ${categoryConfig.color}">
+                                <i class="fa-solid ${categoryConfig.icon} text-[10px]"></i>
+                                ${item.category}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 text-slate-500 whitespace-nowrap">${this.formatDate(item.date)}</td>
+                        <td class="py-3 px-4 text-right font-bold whitespace-nowrap ${isIncome ? 'text-emerald-600' : 'text-slate-800'}">
+                            ${isIncome ? '+' : '-'} ${this.formatCurrency(item.amount)}
+                        </td>
+                        <td class="py-3 px-4 text-center">
+                            <button onclick="deleteTransaction('${item.id}')" class="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-all" title="Excluir lançamento">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            },
+
+            showToast(message, type = 'success') {
+                const container = document.getElementById('toast-container');
+                const toast = document.createElement('div');
+                
+                const bgClass = type === 'success' ? 'bg-slate-900 text-white border-emerald-500' : 'bg-rose-900 text-white border-rose-500';
+                const icon = type === 'success' ? 'fa-circle-check text-emerald-400' : 'fa-triangle-exclamation text-rose-400';
+
+                toast.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border-l-4 ${bgClass} text-xs font-medium transform transition-all duration-300 translate-y-2 opacity-0`;
+                toast.innerHTML = `<i class="fa-solid ${icon} text-base"></i><span>${message}</span>`;
+
+                container.appendChild(toast);
+
+                // Trigger reflow & animation
+                setTimeout(() => {
+                    toast.classList.remove('translate-y-2', 'opacity-0');
+                }, 10);
+
+                setTimeout(() => {
+                    toast.classList.add('opacity-0', 'translate-y-2');
+                    setTimeout(() => toast.remove(), 300);
+                }, 3000);
+            },
+
+            escapeHtml(str) {
+                return str.replace(/[&<>"']/g, function(m) {
+                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
+                });
+            }
+        };
+
+        // ==========================================
+        // 7. CONTROLADOR PRINCIPAL & HANDLERS DE EVENTO
+        // ==========================================
+        
+        function renderApp() {
+            UIManager.renderDashboardCards(AppState.transactions);
+            UIManager.renderTransactionList(AppState.transactions);
+            ChartManager.updateCharts(AppState.transactions);
+        }
+
+        function filterTransactions(type) {
+            AppState.filterType = type;
+
+            // Atualiza botões visuais do filtro
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.className = 'filter-btn px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all';
+            });
+            const activeBtn = document.getElementById(`filter-${type}`);
+            if (activeBtn) {
+                activeBtn.className = 'filter-btn px-3 py-1.5 rounded-lg bg-white text-slate-800 shadow-sm transition-all font-semibold';
+            }
+
+            renderApp();
+        }
+
+        function deleteTransaction(id) {
+            AppState.transactions = AppState.transactions.filter(t => t.id !== id);
+            StorageManager.save(AppState.transactions);
+            renderApp();
+            UIManager.showToast('Lançamento excluído com sucesso.');
+        }
+
+        // Event Listeners na inicialização do DOM
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // 1. Carregar dados do localStorage
+            AppState.transactions = StorageManager.load();
+
+            // Se não houver dados no primeiro acesso, sugere ou deixa limpo
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('date').value = today;
+
+            // Popula categoria conforme o tipo inicial selecionado
+            const initialType = document.querySelector('input[name="transaction-type"]:checked').value;
+            UIManager.populateCategorySelect(initialType);
+
+            // Renderiza estado inicial
+            renderApp();
+
+            // 2. Ouvinte de troca no radio de Tipo de Transação
+            document.querySelectorAll('input[name="transaction-type"]').forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    UIManager.populateCategorySelect(e.target.value);
+                });
+            });
+
+            // 3. Submit do Formulário de Lançamento
+            document.getElementById('transaction-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+
+                const type = document.querySelector('input[name="transaction-type"]:checked').value;
+                const description = document.getElementById('desc').value.trim();
+                const amount = parseFloat(document.getElementById('amount').value);
+                const date = document.getElementById('date').value;
+                const category = document.getElementById('category').value;
+
+                if (!description || isNaN(amount) || amount <= 0 || !date || !category) {
+                    UIManager.showToast('Preencha todos os campos corretamente.', 'error');
+                    return;
+                }
+
+                const newTransaction = {
+                    id: Date.now().toString(),
+                    description,
+                    amount,
+                    type,
+                    category,
+                    date
+                };
+
+                AppState.transactions.unshift(newTransaction);
+                StorageManager.save(AppState.transactions);
+                renderApp();
+
+                // Limpar campos do form
+                document.getElementById('desc').value = '';
+                document.getElementById('amount').value = '';
+                UIManager.showToast('Novo lançamento cadastrado!');
+            });
+
+            // 4. Busca por Texto (Debounce simples via input)
+            document.getElementById('search-input').addEventListener('input', (e) => {
+                AppState.searchQuery = e.target.value;
+                renderApp();
+            });
+
+            // 5. Botão "Carregar Dados de Exemplo"
+            document.getElementById('btn-load-demo').addEventListener('click', () => {
+                AppState.transactions = [...DEMO_TRANSACTIONS];
+                StorageManager.save(AppState.transactions);
+                renderApp();
+                document.getElementById('demo-banner').classList.remove('hidden');
+                UIManager.showToast('Dados de exemplo carregados!');
+            });
+
+            // 6. Botão "Limpar Tudo"
+            document.getElementById('btn-clear-all').addEventListener('click', () => {
+                if (AppState.transactions.length === 0) {
+                    UIManager.showToast('Nenhum dado para limpar.', 'error');
+                    return;
+                }
+                AppState.transactions = [];
+                StorageManager.clear();
+                renderApp();
+                document.getElementById('demo-banner').classList.add('hidden');
+                UIManager.showToast('Todos os lançamentos foram apagados.');
+            });
+
+            // 7. Controle do Modal da Arquitetura Técnica
+            const techModal = document.getElementById('tech-modal');
+            const btnOpenModal = document.getElementById('btn-tech-docs');
+            const btnCloseModal = document.getElementById('btn-close-modal');
+            const btnCloseModalFooter = document.getElementById('btn-close-modal-footer');
+
+            const toggleModal = (show) => {
+                if (show) {
+                    techModal.classList.remove('hidden');
+                } else {
+                    techModal.classList.add('hidden');
+                }
+            };
+
+            btnOpenModal.addEventListener('click', () => toggleModal(true));
+            btnCloseModal.addEventListener('click', () => toggleModal(false));
+            btnCloseModalFooter.addEventListener('click', () => toggleModal(false));
+            techModal.addEventListener('click', (e) => {
+                if (e.target === techModal) toggleModal(false);
+            });
+        });
+    </script>
+</body>
+</html>
